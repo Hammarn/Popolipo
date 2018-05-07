@@ -27,4 +27,6 @@ The Popolipo pipeline comes with documentation about the pipeline, found in the 
 5. [Troubleshooting](docs/troubleshooting.md)
 
 ### Credits
-This pipeline was written by Hammarn ([Hammarn](https://github.com/Hammarn)) at [Uppsala University](uu.com).
+This pipeline was written by Rickard Hammarén ([Hammarn](https://github.com/Hammarn)) at [Uppsala University](uu.com).
+
+Also; [Popolipo](https://www.youtube.com/watch?v=-530vRNFoaA)
