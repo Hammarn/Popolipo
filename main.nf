@@ -112,7 +112,24 @@ try {
 }
 
 
+process exclude_indels_ATCG { 
+    input:
+    bimfile from bimfile
+    bedfile from bedfile    
+    Output:
 
+    """
+    grep -P "\tI" $bimfile >> variants_to_remove
+    grep -P  "\tD" $bimfile >> variants_to_remove
+
+    grep -P "\tA\tT" $bimfile >> variants_to_remove
+    grep -P "\tT\tA" $bimfile >> variants_to_remove
+    grep -P "\tC\tG" $bimfile >> variants_to_remove
+    grep -P "\tG\tC" $bimfile >> variants_to_remove
+    
+
+    plink --bfile $bedfile --exclude variants_to_remove --make-bed --out ${bedfile}_cleaned 
+    """
 
 
 
