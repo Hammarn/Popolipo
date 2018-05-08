@@ -51,6 +51,9 @@ params.name = false
 params.email = false
 params.plaintext_email = false
 
+params.input = '*.bed'
+
+
 output_docs = file("$baseDir/docs/output.md")
 
 
@@ -62,13 +65,13 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
   custom_runName = workflow.runName
 }
 
-//*
-// * Create a channel for input read files
-// */
-//Channel
-//    .fromFilePairs( params.reads, size: params.singleEnd ? 1 : 2 )
-//    .ifEmpty { exit 1, "Cannot find any reads matching: ${params.reads}\nNB: Path needs to be enclosed in quotes!\nNB: Path requires at least one * wildcard!\nIf this is single-end data, please specify --singleEnd on the command line." }
-//    .into { read_files_fastqc }
+/*
+ * Create a channel for input read files
+ */
+Channel
+    .fromPath( params.input )
+    .ifEmpty { exit 1, "Cannot find any input: ${params.input\nNB: Path needs to be enclosed in quotes!\nNB: Path requires at least one * wildcard"!
+    .into { bedfiles }
 
 
 // Header log info
@@ -77,9 +80,7 @@ log.info " Popolipo v${params.version}"
 log.info "========================================="
 def summary = [:]
 summary['Run Name']     = custom_runName ?: workflow.runName
-summary['Reads']        = params.reads
-summary['Fasta Ref']    = params.fasta
-summary['Data Type']    = params.singleEnd ? 'Single-End' : 'Paired-End'
+summary['input']        = params.input
 summary['Max Memory']   = params.max_memory
 summary['Max CPUs']     = params.max_cpus
 summary['Max Time']     = params.max_time
