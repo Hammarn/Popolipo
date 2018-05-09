@@ -72,13 +72,16 @@ params.input = '*.bed'
 //: Channel.fromPath( '${sample}.{bed,bim,fam}' )
 
 
-println params.input
-//def bimbam (sample){
-//    $sample = sample
-    //sample = "${sample}"
-Channel.from(${params.input} + ".bed", ${params.input} + ".bim", ${params.input} + ".fam").set {  inputChannel } 
+sample = params.input
 
-println inputChannel
+println sample
+
+
+bed = Channel.fromPath(sample +'.bed')
+bim = Channel.fromPath(sample +'.bim')
+fam = Channel.fromPath(sample +'.fam')
+
+
 // Header log info
 log.info "========================================="
 log.info " Popolipo v${params.version}"
@@ -119,17 +122,18 @@ try {
 
 
 process exclude_indels_ATCG { 
-    
+    publishDir "${params.outdir}", mode: 'copy'
+     
     input:
-    set file(bim:'*.bim'), file(bed:'*.bed'), file(fam:'*.fam')  from inputChannel
-    
+    file bim from bim
+    file bed from bed
+    file fam from fam 
     output:
-    '*.bed'
+    file "${bed.baseName}*" into indels_ATCG_results
     
     """
     echo $bim
     echo $bed
-    echo $fam
     grep -P "\tI" $bim>> variants_to_remove
     grep -P  "\tD" $bim>> variants_to_remove
 
@@ -138,7 +142,7 @@ process exclude_indels_ATCG {
     grep -P "\tC\tG" $bim>> variants_to_remove
     grep -P "\tG\tC" $bim>> variants_to_remove
 
-    plink --bfile $bed --exclude variants_to_remove --make-bed --out ${bed.baseName}_cleaned 
+    plink --bfile ${bed.baseName} --exclude variants_to_remove --make-bed --out ${bed.baseName}_cleaned 
     """
 }
 
