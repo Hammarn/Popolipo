@@ -51,7 +51,6 @@ params.name = false
 params.email = false
 params.plaintext_email = false
 
-params.input = '*.bed'
 
 
 output_docs = file("$baseDir/docs/output.md")
@@ -68,12 +67,18 @@ if( !(workflow.runName ==~ /[a-z]+_[a-z]+/) ){
 /*
  * Create a channel for input read files
  */
-Channel
-    .fromPath( params.input )
-    .ifEmpty { exit 1, "Cannot find any input: ${params.input\nNB: Path needs to be enclosed in quotes!\nNB: Path requires at least one * wildcard"!
-    .into { bedfiles }
+params.input = '*.bed'
+//inputChannel = sample.endsWith("bed") ? Channel.fromPath( '${sample.baseName}.{bed,bim,fam}' )
+//: Channel.fromPath( '${sample}.{bed,bim,fam}' )
 
 
+println params.input
+//def bimbam (sample){
+//    $sample = sample
+    //sample = "${sample}"
+Channel.from(${params.input} + ".bed", ${params.input} + ".bim", ${params.input} + ".fam").set {  inputChannel } 
+
+println inputChannel
 // Header log info
 log.info "========================================="
 log.info " Popolipo v${params.version}"
@@ -114,103 +119,28 @@ try {
 
 
 process exclude_indels_ATCG { 
-    input:
-    bimfile from bimfile
-    bedfile from bedfile    
-    Output:
-
-    """
-    grep -P "\tI" $bimfile >> variants_to_remove
-    grep -P  "\tD" $bimfile >> variants_to_remove
-
-    grep -P "\tA\tT" $bimfile >> variants_to_remove
-    grep -P "\tT\tA" $bimfile >> variants_to_remove
-    grep -P "\tC\tG" $bimfile >> variants_to_remove
-    grep -P "\tG\tC" $bimfile >> variants_to_remove
     
-
-    plink --bfile $bedfile --exclude variants_to_remove --make-bed --out ${bedfile}_cleaned 
+    input:
+    set file(bim:'*.bim'), file(bed:'*.bed'), file(fam:'*.fam')  from inputChannel
+    
+    output:
+    '*.bed'
+    
     """
+    echo $bim
+    echo $bed
+    echo $fam
+    grep -P "\tI" $bim>> variants_to_remove
+    grep -P  "\tD" $bim>> variants_to_remove
 
+    grep -P "\tA\tT" $bim>> variants_to_remove
+    grep -P "\tT\tA" $bim>> variants_to_remove
+    grep -P "\tC\tG" $bim>> variants_to_remove
+    grep -P "\tG\tC" $bim>> variants_to_remove
 
-
-
-
-/*
- * Completion e-mail notification
- */
-workflow.onComplete {
-
-    // Set up the e-mail variables
-    def subject = "[Popolipo] Successful: $workflow.runName"
-    if(!workflow.success){
-      subject = "[Popolipo] FAILED: $workflow.runName"
-    }
-    def email_fields = [:]
-    email_fields['version'] = params.version
-    email_fields['runName'] = custom_runName ?: workflow.runName
-    email_fields['success'] = workflow.success
-    email_fields['dateComplete'] = workflow.complete
-    email_fields['duration'] = workflow.duration
-    email_fields['exitStatus'] = workflow.exitStatus
-    email_fields['errorMessage'] = (workflow.errorMessage ?: 'None')
-    email_fields['errorReport'] = (workflow.errorReport ?: 'None')
-    email_fields['commandLine'] = workflow.commandLine
-    email_fields['projectDir'] = workflow.projectDir
-    email_fields['summary'] = summary
-    email_fields['summary']['Date Started'] = workflow.start
-    email_fields['summary']['Date Completed'] = workflow.complete
-    email_fields['summary']['Pipeline script file path'] = workflow.scriptFile
-    email_fields['summary']['Pipeline script hash ID'] = workflow.scriptId
-    if(workflow.repository) email_fields['summary']['Pipeline repository Git URL'] = workflow.repository
-    if(workflow.commitId) email_fields['summary']['Pipeline repository Git Commit'] = workflow.commitId
-    if(workflow.revision) email_fields['summary']['Pipeline Git branch/tag'] = workflow.revision
-    if(workflow.container) email_fields['summary']['Docker image'] = workflow.container
-    email_fields['software_versions'] = software_versions
-    email_fields['software_versions']['Nextflow Build'] = workflow.nextflow.build
-    email_fields['software_versions']['Nextflow Compile Timestamp'] = workflow.nextflow.timestamp
-
-    // Render the TXT template
-    def engine = new groovy.text.GStringTemplateEngine()
-    def tf = new File("$baseDir/assets/email_template.txt")
-    def txt_template = engine.createTemplate(tf).make(email_fields)
-    def email_txt = txt_template.toString()
-
-    // Render the HTML template
-    def hf = new File("$baseDir/assets/email_template.html")
-    def html_template = engine.createTemplate(hf).make(email_fields)
-    def email_html = html_template.toString()
-
-    // Render the sendmail template
-    def smail_fields = [ email: params.email, subject: subject, email_txt: email_txt, email_html: email_html, baseDir: "$baseDir" ]
-    def sf = new File("$baseDir/assets/sendmail_template.txt")
-    def sendmail_template = engine.createTemplate(sf).make(smail_fields)
-    def sendmail_html = sendmail_template.toString()
-
-    // Send the HTML e-mail
-    if (params.email) {
-        try {
-          if( params.plaintext_email ){ throw GroovyException('Send plaintext e-mail, not HTML') }
-          // Try to send HTML e-mail using sendmail
-          [ 'sendmail', '-t' ].execute() << sendmail_html
-          log.info "[Popolipo] Sent summary e-mail to $params.email (sendmail)"
-        } catch (all) {
-          // Catch failures and try with plaintext
-          [ 'mail', '-s', subject, params.email ].execute() << email_txt
-          log.info "[Popolipo] Sent summary e-mail to $params.email (mail)"
-        }
-    }
-
-    // Write summary e-mail HTML to a file
-    def output_d = new File( "${params.outdir}/Documentation/" )
-    if( !output_d.exists() ) {
-      output_d.mkdirs()
-    }
-    def output_hf = new File( output_d, "pipeline_report.html" )
-    output_hf.withWriter { w -> w << email_html }
-    def output_tf = new File( output_d, "pipeline_report.txt" )
-    output_tf.withWriter { w -> w << email_txt }
-
-    log.info "[Popolipo] Pipeline Complete"
-
+    plink --bfile $bed --exclude variants_to_remove --make-bed --out ${bed.baseName}_cleaned 
+    """
 }
+
+
+
